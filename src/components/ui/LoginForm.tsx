@@ -1,10 +1,8 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,8 +25,7 @@ export default function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    window.location.href = "/dashboard";
   }
 
   return (
@@ -45,7 +42,6 @@ export default function LoginForm() {
           autoComplete="email"
         />
       </div>
-
       <div>
         <label className="label">Şifre</label>
         <input
@@ -58,14 +54,12 @@ export default function LoginForm() {
           autoComplete="current-password"
         />
       </div>
-
       {error && (
         <div className="flex items-start gap-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
           <span className="text-rose-400 shrink-0">⚠</span>
           <p className="text-rose-300 text-sm">{error}</p>
         </div>
       )}
-
       <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading ? (
           <>
