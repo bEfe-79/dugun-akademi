@@ -17,11 +17,15 @@ export function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {
-            // Server Component'te set edilemez, middleware halleder
-          }
+          } catch {}
         },
       },
     }
   );
+}
+
+export async function getUser() {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user ?? null;
 }
