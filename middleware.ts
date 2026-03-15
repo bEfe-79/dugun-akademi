@@ -1,6 +1,3 @@
-// src/middleware.ts
-// ÖNEMLİ: Vercel Edge Runtime'da @/ alias ile dış dosya import'u çalışmaz.
-// Tüm Supabase mantığı bu tek dosyada inline olmalı.
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -28,14 +25,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Session'ı tazele — bu satırı kaldırma!
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  // Korumalı rotalar — giriş yoksa /login'e yönlendir
   const protectedPaths = ["/dashboard", "/logs", "/library", "/admin"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
@@ -45,14 +37,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Giriş yapmış kullanıcı /login'e gelirse /dashboard'a gönder
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
-  // Admin koruması
   if (user && pathname.startsWith("/admin")) {
     const { data: profile } = await supabase
       .from("profiles")
