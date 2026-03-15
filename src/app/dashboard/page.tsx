@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import ProgressCard from "@/components/ui/ProgressCard";
 import AnnouncementsWidget from "@/components/ui/AnnouncementsWidget";
 import StatCard from "@/components/ui/StatCard";
@@ -14,8 +14,8 @@ function formatCurrency(n: number) {
 }
 
 export default async function DashboardPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
+const supabase = createClient();
 
   if (!user) {
     return <div className="p-8 text-stone-400">Oturum bulunamadı.</div>;
