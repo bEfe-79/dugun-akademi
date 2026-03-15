@@ -24,7 +24,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-lg shrink-0 overflow-hidden">
           {profile?.team_logo_url
             ? <img src={profile.team_logo_url} alt="logo" className="w-full h-full object-cover" />
-            : "💍"
+            : <img src="/logo.png" alt="logo" className="w-full h-full object-contain p-1" />
           }
         </div>
         <div>
