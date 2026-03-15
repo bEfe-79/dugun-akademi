@@ -48,12 +48,12 @@ export default async function DashboardPage() {
     {} as Record<string, number>
   );
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar";
-
-  const rateColor = successRate >= 100 ? "text-emerald-400"
-    : successRate >= 75 ? "text-amber-400"
-    : successRate >= 50 ? "text-orange-400"
+  const rateColor = successRate >= 100
+    ? "text-emerald-400"
+    : successRate >= 75
+    ? "text-amber-400"
+    : successRate >= 50
+    ? "text-orange-400"
     : "text-rose-400";
 
   return (
