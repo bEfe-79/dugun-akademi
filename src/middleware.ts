@@ -25,7 +25,30 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  await supabase.auth.getSession();
+
+  const { pathname } = request.nextUrl;
+
+  // Cookie'den session var mi kontrol et
+  const sessionCookie = request.cookies.getAll()
+    .find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+
+  const isProtected = ["/dashboard", "/logs", "/library", "/admin"]
+    .some(p => pathname.startsWith(p));
+
+  // Giris yapilmamis + korumal rota → login
+  if (!sessionCookie && isProtected) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Ana sayfa → login'e yonlendir
+  if (pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = sessionCookie ? "/dashboard" : "/login";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
