@@ -13,7 +13,7 @@ export default function LibraryPage() {
     const supabase = createClient();
     Promise.all([
       supabase.from("sales_dictionary").select("*").order("term_name"),
-      supabase.from("knowledge_base").select("id, title, content, category, created_at")
+      supabase.from("knowledge_base").select("id, title, content, category, created_at, author, published_year, cover_image_url, read_time_minutes, featured_quote")
         .eq("is_published", true).order("created_at", { ascending: false }),
     ]).then(([dict, arts]) => {
       setDictionary(dict.data ?? []);
