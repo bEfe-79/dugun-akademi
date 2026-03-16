@@ -55,16 +55,13 @@ export interface Announcement {
   type: "announcement" | "quote_of_day" | "alert";
 }
 
-export const ACTIVITY_META: Record<
-  ActivityType,
-  { label: string; icon: string; color: string }
-> = {
-  visit:   { label: "Ziyaret",  icon: "🏠", color: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
-  call:    { label: "Arama",    icon: "📞", color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
-  email:   { label: "E-posta",  icon: "✉️", color: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
-  meeting: { label: "Toplantı", icon: "🤝", color: "bg-violet-500/15 text-violet-300 border-violet-500/30" },
-  demo:    { label: "Demo",     icon: "🎯", color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
-  other:   { label: "Diğer",    icon: "📌", color: "bg-surface-3 text-stone-400 border-surface-4" },
+export const ACTIVITY_META: Record<ActivityType, { label: string; icon: string; color: string }> = {
+  call:    { label: "Satış Görüşmesi", icon: "📞", color: "bg-emerald-500/15 text-emerald-700 border-emerald-200" },
+  visit:   { label: "Randevu Araması", icon: "📅", color: "bg-blue-500/15 text-blue-700 border-blue-200" },
+  meeting: { label: "Ekip Toplantısı", icon: "🤝", color: "bg-violet-500/15 text-violet-700 border-violet-200" },
+  demo:    { label: "Demo",            icon: "🎯", color: "bg-rose-500/15 text-rose-700 border-rose-200" },
+  email:   { label: "E-posta",         icon: "✉️", color: "bg-amber-500/15 text-amber-700 border-amber-200" },
+  other:   { label: "Diğer",           icon: "📌", color: "bg-slate-100 text-slate-600 border-slate-200" },
 };
 
 export const ROLE_LABELS: Record<string, string> = {
