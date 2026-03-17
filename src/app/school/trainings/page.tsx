@@ -289,7 +289,7 @@ export default function SchoolPage() {
             <div style={{ backgroundColor: "#f0fffe", border: "2px solid #00abaa", borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 20 }}>📍</span>
               <p style={{ fontSize: 14, color: "#1e293b" }}>
-                Mevcut sıralaман: <span style={{ fontFamily: "'Chalet', sans-serif", fontWeight: 700, color: "#00abaa", fontSize: 18 }}>{myRank}.</span>
+                Mevcut sıralaman: <span style={{ fontFamily: "'Chalet', sans-serif", fontWeight: 700, color: "#00abaa", fontSize: 18 }}>{myRank}.</span>
                 {lbEntries[myRank - 1] && (
                   <span style={{ color: "#64748b", fontSize: 13 }}> · Ort. %{lbEntries[myRank - 1].avg_score} · {lbEntries[myRank - 1].passed_count} sınav geçildi</span>
                 )}
