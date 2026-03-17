@@ -281,7 +281,7 @@ export default function SchoolPage() {
       {tab === "leaderboard" && (
         <div className="space-y-5">
           <div>
-            <p style={{ color: "#64748b", fontSize: 14 }}>Sınav performansına göre sıralama — satış hedefleri dahil değil.</p>
+            <p style={{ color: "#64748b", fontSize: 14 }}>Sınav performansına göre sıralamadır.</p>
           </div>
 
           {/* Kendi sıran */}
