@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, DailyLog } from "@/types";
 
@@ -19,46 +19,51 @@ function fmt(n: number) {
 }
 
 export default function AdminClient({
-  profiles, logs: initialLogs, defaultTab = "logs",
+  profiles,
+  logs: initialLogs,
+  defaultTab = "logs",
 }: {
   profiles: (Profile & { last_login?: string })[];
   logs: (DailyLog & { profiles?: { full_name: string } })[];
   defaultTab?: Tab;
 }) {
-  const [tab, setTab]               = useState<Tab>(defaultTab);
-  const [logs, setLogs]             = useState(initialLogs);
-  const [filterUser, setFilterUser] = useState("");
+  const [tab, setTab]           = useState<Tab>(defaultTab);
+  const [logs, setLogs]         = useState(initialLogs);
+  const [filterUser, setFilterUser]       = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo]     = useState("");
-  const [filterTypes, setFilterTypes]       = useState<string[]>([]);
-  const [searchText, setSearchText]         = useState("");
-  const [sortCol, setSortCol] = useState("log_date");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filterDateTo, setFilterDateTo]   = useState("");
+  const [filterTypes, setFilterTypes]     = useState<string[]>([]);
+  const [searchText, setSearchText]       = useState("");
+  const [sortCol, setSortCol]   = useState("log_date");
+  const [sortDir, setSortDir]   = useState<"asc" | "desc">("desc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  // initialLogs değişince sync et
+  useEffect(() => { setLogs(initialLogs); }, [initialLogs]);
+
+  const todayStr      = new Date().toISOString().split("T")[0];
   const staffProfiles = profiles.filter(p => p.role === "staff");
 
   const filteredLogs = useMemo(() => {
     let result = logs.filter(l => {
       if (filterUser && l.user_id !== filterUser) return false;
       if (filterDateFrom && l.log_date < filterDateFrom) return false;
-      if (filterDateTo && l.log_date > filterDateTo) return false;
+      if (filterDateTo   && l.log_date > filterDateTo)   return false;
       if (filterTypes.length > 0 && !filterTypes.includes(l.activity_type)) return false;
       if (searchText) {
-        const q = searchText.toLowerCase();
+        const q    = searchText.toLowerCase();
         const name = l.profiles?.full_name?.toLowerCase() ?? "";
-        const content = l.log_content?.toLowerCase() ?? "";
-        if (!name.includes(q) && !content.includes(q)) return false;
+        const note = l.log_content?.toLowerCase() ?? "";
+        if (!name.includes(q) && !note.includes(q)) return false;
       }
       return true;
     });
     return [...result].sort((a, b) => {
       let av = "", bv = "";
-      if (sortCol === "full_name")          { av = a.profiles?.full_name ?? ""; bv = b.profiles?.full_name ?? ""; }
-      else if (sortCol === "log_date")      { av = a.log_date; bv = b.log_date; }
-      else if (sortCol === "log_time")      { av = String(a.log_time); bv = String(b.log_time); }
-      else if (sortCol === "activity_type") { av = a.activity_type; bv = b.activity_type; }
+      if      (sortCol === "full_name")     { av = a.profiles?.full_name ?? ""; bv = b.profiles?.full_name ?? ""; }
+      else if (sortCol === "log_date")      { av = a.log_date;           bv = b.log_date; }
+      else if (sortCol === "log_time")      { av = String(a.log_time);   bv = String(b.log_time); }
+      else if (sortCol === "activity_type") { av = a.activity_type;      bv = b.activity_type; }
       return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
   }, [logs, filterUser, filterDateFrom, filterDateTo, filterTypes, searchText, sortCol, sortDir]);
@@ -90,9 +95,9 @@ export default function AdminClient({
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
-    a.download = `gunlukler-${filterDateFrom || "tum"}.csv`; a.click();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = `gunlukler-${filterDateFrom || "tum"}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -132,11 +137,10 @@ export default function AdminClient({
         ] as { id: Tab; label: string }[]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: "8px 20px", borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: "pointer",
-            border: "none", transition: "all 0.15s",
+            border: "none", transition: "all 0.15s", whiteSpace: "nowrap",
             backgroundColor: tab === t.id ? "#ffffff" : "transparent",
             color: tab === t.id ? "#00abaa" : "#64748b",
             boxShadow: tab === t.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-            whiteSpace: "nowrap",
           }}>
             {t.label}
           </button>
@@ -166,7 +170,7 @@ export default function AdminClient({
                   <input type="date" className="input" style={{ width: "100%" }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-                  <button onClick={exportCSV} className="btn-ghost" style={{ fontSize: 13, flex: 1 }}>⬇ CSV</button>
+                  <button onClick={exportCSV}   className="btn-ghost"   style={{ fontSize: 13, flex: 1 }}>⬇ CSV</button>
                   <button onClick={exportExcel} className="btn-primary" style={{ fontSize: 13, flex: 1 }}>⬇ Excel</button>
                 </div>
               </div>
@@ -177,12 +181,10 @@ export default function AdminClient({
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 }}>Metin Ara</label>
               <div style={{ display: "flex", alignItems: "center", gap: 10, backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 14px" }}>
                 <span style={{ color: "#94a3b8", flexShrink: 0 }}>🔍</span>
-                <input
-                  type="text"
+                <input type="text"
                   style={{ border: "none", outline: "none", flex: 1, fontSize: 14, backgroundColor: "transparent", color: "#1e293b" }}
                   placeholder="Personel adı veya not içinde ara…"
-                  value={searchText}
-                  onChange={e => setSearchText(e.target.value)} />
+                  value={searchText} onChange={e => setSearchText(e.target.value)} />
                 {searchText && (
                   <button onClick={() => setSearchText("")} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13 }}>✕</button>
                 )}
@@ -218,12 +220,12 @@ export default function AdminClient({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 640 }}>
                 <thead>
                   <tr style={{ backgroundColor: "#00abaa" }}>
-                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="full_name" label="Personel" /></th>
-                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="log_date" label="Tarih" /></th>
-                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="log_time" label="Saat" /></th>
+                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="full_name"     label="Personel" /></th>
+                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="log_date"      label="Tarih" /></th>
+                    <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="log_time"      label="Saat" /></th>
                     <th style={{ textAlign: "left", padding: "12px 16px" }}><SortBtn col="activity_type" label="Aktivite" /></th>
                     <th style={{ textAlign: "left", padding: "12px 16px", color: "#ffffff", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Not</th>
-                    <th style={{ padding: "12px 16px", color: "#ffffff", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>İşlem</th>
+                    <th style={{ padding: "12px 16px", color: "#ffffff", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.05em", textAlign: "center" }}>İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,9 +250,7 @@ export default function AdminClient({
                           {log.log_content}
                         </td>
                         <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                          <button
-                            onClick={() => handleDeleteLog(log.id)}
-                            disabled={deletingId === log.id}
+                          <button onClick={() => handleDeleteLog(log.id)} disabled={deletingId === log.id}
                             style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "1px solid #fecaca", backgroundColor: "#fef2f2", color: "#ef4444", cursor: "pointer", opacity: deletingId === log.id ? 0.5 : 1, whiteSpace: "nowrap" }}>
                             {deletingId === log.id ? "…" : "Sil"}
                           </button>
@@ -287,7 +287,7 @@ export default function AdminClient({
                 {profiles.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: "center", padding: "48px 16px", color: "#94a3b8" }}>Veri yok.</td></tr>
                 ) : profiles.map(p => {
-                  const rate = p.monthly_target > 0 ? Math.round((p.current_sales / p.monthly_target) * 100) : 0;
+                  const rate       = p.monthly_target > 0 ? Math.round((p.current_sales / p.monthly_target) * 100) : 0;
                   const loggedToday = initialLogs.some(l => l.user_id === p.id && l.log_date === todayStr);
                   return (
                     <tr key={p.id}
@@ -333,25 +333,24 @@ export default function AdminClient({
       )}
 
       {/* ── MESSAGES TAB ── */}
-      {tab === "messages" && (
-        <MessagesPanel profiles={profiles} />
-      )}
+      {tab === "messages" && <MessagesPanel profiles={profiles} />}
     </div>
   );
 }
 
-// ── MESAJ PANELİ ──────────────────────────────────────────────────────────────
+// ── MESAJ PANELİ ─────────────────────────────────────────────────────────────
 function MessagesPanel({ profiles }: { profiles: Profile[] }) {
-  const [targetType, setTargetType] = useState<"all" | "single">("all");
+  const [targetType, setTargetType]     = useState<"all" | "single">("all");
   const [targetUserId, setTargetUserId] = useState("");
   const [title, setTitle]   = useState("");
   const [body, setBody]     = useState("");
-  const [sending, setSending] = useState(false);
-  const [msg, setMsg]       = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [sending, setSending]   = useState(false);
+  const [msg, setMsg]           = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [sentMessages, setSentMessages] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
   const supabase = createClient();
+  const staffProfiles = profiles.filter(p => p.role === "staff");
 
   async function loadHistory() {
     setLoadingHistory(true);
@@ -365,20 +364,20 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
     setLoadingHistory(false);
   }
 
-  useState(() => { loadHistory(); });
+  useEffect(() => { loadHistory(); }, []);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) { setMsg({ type: "error", text: "Başlık zorunludur." }); return; }
+    if (targetType === "single" && !targetUserId) { setMsg({ type: "error", text: "Lütfen bir personel seçin." }); return; }
     setSending(true); setMsg(null);
 
     const { error } = await supabase.from("announcements").insert({
-      title: title.trim(),
-      body: body.trim() || null,
-      type: "admin_message",
+      title:     title.trim(),
+      body:      body.trim() || null,
+      type:      "admin_message",
       is_active: true,
-      priority: 0,
-      // target_user_id: targetType === "single" ? targetUserId : null  -- ileride eklenebilir
+      priority:  0,
     });
 
     if (error) {
@@ -410,16 +409,14 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
         </div>
       )}
 
-      {/* Mesaj gönderme formu */}
       <div className="card space-y-4" style={{ border: "1px solid #b2eded", backgroundColor: "#f0fffe" }}>
         <h3 style={{ fontFamily: "'Chalet', sans-serif", fontWeight: 700, color: "#1e293b", fontSize: 17 }}>Yeni Mesaj Gönder</h3>
-
         <form onSubmit={handleSend} className="space-y-4">
-          {/* Hedef seçimi */}
+
           <div>
             <label style={lbl}>Alıcı</label>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setTargetType("all")}
+              <button type="button" onClick={() => { setTargetType("all"); setTargetUserId(""); }}
                 style={{ padding: "8px 18px", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", backgroundColor: targetType === "all" ? "#00abaa" : "#f1f5f9", color: targetType === "all" ? "#fff" : "#64748b", transition: "all .15s" }}>
                 👥 Tüm Personel
               </button>
@@ -433,9 +430,9 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
           {targetType === "single" && (
             <div>
               <label style={lbl}>Personel Seç</label>
-              <select style={inp} value={targetUserId} onChange={e => setTargetUserId(e.target.value)} required={targetType === "single"}>
+              <select style={inp} value={targetUserId} onChange={e => setTargetUserId(e.target.value)} required>
                 <option value="">Seçiniz…</option>
-                {profiles.filter(p => p.role === "staff").map(p => (
+                {staffProfiles.map(p => (
                   <option key={p.id} value={p.id}>{p.full_name}</option>
                 ))}
               </select>
@@ -455,7 +452,7 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
           <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 8 }}>
             <span style={{ flexShrink: 0 }}>ℹ️</span>
             <p style={{ fontSize: 12, color: "#92400e", lineHeight: 1.5 }}>
-              Gönderilen mesajlar kullanıcıların Dashboard'undaki Duyurular bölümünde görünür. Kullanıcılar yanıt veremez.
+              Mesajlar şu an dashboard duyurular bölümünde görünüyor. Yakında ayrı bir mesajlaşma arayüzüne taşınacak.
             </p>
           </div>
 
