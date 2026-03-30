@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -14,11 +14,12 @@ interface Message {
 }
 
 export default function MessagesPage() {
-  const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [userId, setUserId]     = useState<string | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const router  = useRouter();
+  const [messages, setMessages]   = useState<Message[]>([]);
+  const [userId, setUserId]       = useState<string | null>(null);
+  const [loading, setLoading]     = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const markedRef = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -35,25 +36,35 @@ export default function MessagesPage() {
         .or(`target_user_id.is.null,target_user_id.eq.${uid}`)
         .order("created_at", { ascending: false });
 
-      const msgs = data ?? [];
+      const msgs = (data ?? []) as Message[];
       setMessages(msgs);
-      setUnreadCount(msgs.filter(m => !(m.is_read_by ?? []).includes(uid)).length);
+
+      const unread = msgs.filter(m => !(m.is_read_by ?? []).includes(uid));
+      setUnreadCount(unread.length);
       setLoading(false);
 
-      // Tüm mesajları okundu olarak işaretle
-      for (const msg of msgs) {
-        const readBy: string[] = msg.is_read_by ?? [];
-        if (!readBy.includes(uid)) {
-          await supabase.from("announcements").update({
-            is_read_by: [...readBy, uid],
-          }).eq("id", msg.id);
-        }
+      // Okunmamışları toplu güncelle — tek seferlik
+      if (!markedRef.current && unread.length > 0) {
+        markedRef.current = true;
+        const updates = unread.map(msg =>
+          supabase.from("announcements").update({
+            is_read_by: [...(msg.is_read_by ?? []), uid],
+          }).eq("id", msg.id)
+        );
+        await Promise.all(updates);
+        // State'i de güncelle
+        setMessages(prev => prev.map(m =>
+          unread.find(u => u.id === m.id)
+            ? { ...m, is_read_by: [...(m.is_read_by ?? []), uid] }
+            : m
+        ));
+        setUnreadCount(0);
       }
     });
   }, []);
 
   function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff  = Date.now() - new Date(dateStr).getTime();
     const mins  = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days  = Math.floor(diff / 86400000);
@@ -78,9 +89,7 @@ export default function MessagesPage() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }} className="space-y-6">
       <div className="animate-fade-up">
-        <h1 style={{ fontFamily: "'Chalet', sans-serif", fontSize: "clamp(22px,5vw,28px)", fontWeight: 700, color: "#1e293b" }}>
-          Hesabım
-        </h1>
+        <h1 style={{ fontFamily: "'Chalet', sans-serif", fontSize: "clamp(22px,5vw,28px)", fontWeight: 700, color: "#1e293b" }}>Hesabım</h1>
         <p style={{ color: "#64748b", fontSize: 14, marginTop: 4 }}>Profil ve hesap ayarlarınızı yönetin.</p>
       </div>
 
@@ -113,7 +122,7 @@ export default function MessagesPage() {
 
           {/* Sağ: Inbox */}
           <div style={{ backgroundColor: "#fff", borderRadius: 20, boxShadow: "0 4px 16px rgba(0,0,0,.06)", padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 4 }}>Gelen Kutusu</p>
                 <p style={{ fontFamily: "'Chalet', sans-serif", fontWeight: 700, color: "#1e293b", fontSize: 16 }}>Mesajlarım</p>
@@ -141,7 +150,6 @@ export default function MessagesPage() {
                       backgroundColor: isRead ? "#f8fafc" : "#fef2f5",
                       borderRadius: 12,
                       borderLeft: `3px solid ${isRead ? "#e2e8f0" : "#db0962"}`,
-                      transition: "background .2s",
                     }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
