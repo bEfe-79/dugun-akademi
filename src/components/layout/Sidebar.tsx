@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types";
 import { ROLE_LABELS } from "@/types";
 
@@ -9,16 +11,36 @@ const NAV = [
   { href: "/school/trainings", label: "Satış Okulu" },
   { href: "/logs",             label: "Satış Günlüğü" },
   { href: "/library",          label: "Satış Kütüphanesi" },
+  { href: "/account",          label: "Hesabım" },
 ];
 const ADMIN_NAV = [{ href: "/admin", label: "Admin Paneli" }];
 
 export default function Sidebar({ profile }: { profile: Profile | null }) {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const supabase = createClient();
+    supabase.from("announcements")
+      .select("id, is_read_by")
+      .eq("is_active", true)
+      .eq("type", "admin_message")
+      .or(`target_user_id.is.null,target_user_id.eq.${profile.id}`)
+      .then(({ data }) => {
+        const unread = (data ?? []).filter((m: any) => {
+          const readBy: string[] = m.is_read_by ?? [];
+          return !readBy.includes(profile.id);
+        }).length;
+        setUnreadCount(unread);
+      });
+  }, [profile?.id, pathname]);
 
   function isActive(href: string) {
-    if (href === "/library") return pathname.startsWith("/library");
+    if (href === "/library")        return pathname.startsWith("/library");
     if (href === "/school/trainings") return pathname.startsWith("/school");
-    if (href === "/admin") return pathname.startsWith("/admin");
+    if (href === "/admin")          return pathname.startsWith("/admin");
+    if (href === "/account")        return pathname.startsWith("/account");
     return pathname === href;
   }
 
@@ -28,18 +50,9 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
       {/* Logo */}
       <div style={{ padding: "20px 18px 16px", borderBottom: "0.5px solid #f1f5f9", display: "flex", alignItems: "center", gap: 10 }}>
-        <img
-          src="/logo.png"
-          alt="Düğün Akademi"
+        <img src="/logo.png" alt="Düğün Akademi"
           style={{ width: 36, height: 36, borderRadius: 10, objectFit: "contain", backgroundColor: "#f8fafc", padding: 3, flexShrink: 0 }}
-          onError={(e) => {
-            const el = e.currentTarget as HTMLImageElement;
-            el.style.display = "none";
-            const fallback = el.nextElementSibling as HTMLElement;
-            if (fallback) fallback.style.display = "flex";
-          }}
-        />
-        {/* Fallback logo */}
+          onError={(e) => { const el = e.currentTarget as HTMLImageElement; el.style.display = "none"; const fb = el.nextElementSibling as HTMLElement; if (fb) fb.style.display = "flex"; }} />
         <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#00abaa", alignItems: "center", justifyContent: "center", display: "none", flexShrink: 0 }}>
           <div style={{ width: 16, height: 10, border: "2px solid #fff", borderRadius: 2 }} />
         </div>
@@ -53,33 +66,23 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "14px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
-        <p style={{ padding: "0 12px", marginBottom: 8, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-          Menü
-        </p>
+        <p style={{ padding: "0 12px", marginBottom: 8, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Menü</p>
         {NAV.map(item => {
           const active = isActive(item.href);
+          const isAccount = item.href === "/account";
           return (
             <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-              <div style={{
-                display: "flex", alignItems: "center",
-                borderRadius: 12, overflow: "hidden",
-                backgroundColor: active ? "#fef2f5" : "transparent",
-                transition: "background .15s",
-              }}>
-                {/* Pembe sol çizgi */}
-                <div style={{
-                  width: 4, alignSelf: "stretch", flexShrink: 0,
-                  backgroundColor: active ? "#db0962" : "transparent",
-                  borderRadius: "0 3px 3px 0",
-                  minHeight: 40,
-                  transition: "background .15s",
-                }} />
-                <div style={{
-                  flex: 1, padding: "10px 12px",
-                  fontSize: 14, fontWeight: active ? 700 : 500,
-                  color: active ? "#db0962" : "#475569",
-                }}>
-                  {item.label}
+              <div style={{ display: "flex", alignItems: "center", borderRadius: 12, overflow: "hidden", backgroundColor: active ? "#fef2f5" : "transparent", transition: "background .15s" }}>
+                <div style={{ width: 4, alignSelf: "stretch", flexShrink: 0, backgroundColor: active ? "#db0962" : "transparent", borderRadius: "0 3px 3px 0", minHeight: 40, transition: "background .15s" }} />
+                <div style={{ flex: 1, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#db0962" : "#475569" }}>
+                    {item.label}
+                  </span>
+                  {isAccount && unreadCount > 0 && (
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", backgroundColor: "#db0962", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: "#fff" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </Link>
@@ -88,30 +91,14 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
         {profile?.role === "admin" && (
           <>
-            <p style={{ padding: "0 12px", marginTop: 16, marginBottom: 8, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              Yönetim
-            </p>
+            <p style={{ padding: "0 12px", marginTop: 16, marginBottom: 8, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Yönetim</p>
             {ADMIN_NAV.map(item => {
               const active = isActive(item.href);
               return (
                 <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-                  <div style={{
-                    display: "flex", alignItems: "center",
-                    borderRadius: 12, overflow: "hidden",
-                    backgroundColor: active ? "#fef2f5" : "transparent",
-                    transition: "background .15s",
-                  }}>
-                    <div style={{
-                      width: 4, alignSelf: "stretch", flexShrink: 0,
-                      backgroundColor: active ? "#db0962" : "transparent",
-                      borderRadius: "0 3px 3px 0",
-                      minHeight: 40,
-                    }} />
-                    <div style={{
-                      flex: 1, padding: "10px 12px",
-                      fontSize: 14, fontWeight: active ? 700 : 500,
-                      color: active ? "#db0962" : "#475569",
-                    }}>
+                  <div style={{ display: "flex", alignItems: "center", borderRadius: 12, overflow: "hidden", backgroundColor: active ? "#fef2f5" : "transparent" }}>
+                    <div style={{ width: 4, alignSelf: "stretch", flexShrink: 0, backgroundColor: active ? "#db0962" : "transparent", borderRadius: "0 3px 3px 0", minHeight: 40 }} />
+                    <div style={{ flex: 1, padding: "10px 12px", fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#db0962" : "#475569" }}>
                       {item.label}
                     </div>
                   </div>
@@ -124,13 +111,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
 
       {/* User */}
       <div style={{ padding: "14px 16px", borderTop: "0.5px solid #f1f5f9", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-          background: "linear-gradient(135deg, #00abaa, #007a7a)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#fff", fontWeight: 800, fontSize: 14,
-          overflow: "hidden", boxShadow: "0 2px 8px rgba(0,171,170,.3)",
-        }}>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#00abaa,#007a7a)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,171,170,.3)" }}>
           {profile?.avatar_url
             ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : (profile?.full_name?.[0] ?? "?")}
