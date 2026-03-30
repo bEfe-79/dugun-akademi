@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
@@ -8,21 +9,48 @@ import type { Profile } from "@/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const router   = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user?.id) return;
-      supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle()
-        .then(({ data }) => setProfile(data));
+
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Session yok → login'e yönlendir
+      if (!session?.user?.id) { router.push("/login"); return; }
+
+      const { data: profileData } = await supabase
+        .from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+
+      setProfile(profileData);
+
+      // İlk giriş kontrolü — set-password sayfasında değilse yönlendir
+      if (!profileData?.password_changed && pathname !== "/set-password") {
+        router.push("/set-password");
+        return;
+      }
+    }
+
+    checkSession();
+
+    // Session değişikliklerini dinle (expire, logout vb.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        router.push("/login");
+      }
+      if (event === "TOKEN_REFRESHED" && session?.user?.id) {
+        // Token yenilendi, session devam ediyor — bir şey yapmaya gerek yok
+      }
     });
-  }, []);
+
+    return () => subscription.unsubscribe();
+  }, [pathname]);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", backgroundColor: "#f8fafc" }}>
-      {/* Sidebar — sadece lg ve üstünde görünür */}
       <Sidebar profile={profile} />
-
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
         <TopBar profile={profile} />
         <main
@@ -31,8 +59,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-
-      {/* BottomNav — lg ve üstünde kendisi hidden */}
       <BottomNav profile={profile} />
     </div>
   );
