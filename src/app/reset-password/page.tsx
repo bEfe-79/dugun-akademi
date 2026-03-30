@@ -3,6 +3,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function translateError(msg: string): string {
+  if (msg.includes("New password should be different")) return "Yeni şifre eski şifrenizle aynı olamaz.";
+  if (msg.includes("Password should be at least")) return "Şifre en az 8 karakter olmalıdır.";
+  if (msg.includes("Auth session missing")) return "Oturum süresi dolmuş. Lütfen tekrar sıfırlama talebi oluşturun.";
+  if (msg.includes("Token has expired")) return "Sıfırlama linki süresi dolmuş. Lütfen yeni bir link talep edin.";
+  if (msg.includes("Invalid token")) return "Geçersiz sıfırlama linki. Lütfen yeni bir link talep edin.";
+  if (msg.includes("Network")) return "Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.";
+  return "Bir hata oluştu. Lütfen tekrar deneyin.";
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -13,12 +23,10 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Supabase reset linkinden gelen session'ı yakala
     const supabase = createClient();
     supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setReady(true);
     });
-    // Sayfa yüklenince session kontrolü
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setReady(true);
     });
@@ -32,8 +40,11 @@ export default function ResetPasswordPage() {
     setLoading(true);
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) { setError("Şifre güncellenemedi: " + updateError.message); setLoading(false); return; }
-    // password_changed flag'i güncelle
+    if (updateError) {
+      setError(translateError(updateError.message));
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) {
       await supabase.from("profiles").update({ password_changed: true }).eq("id", session.user.id);
@@ -94,7 +105,9 @@ export default function ResetPasswordPage() {
                       <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
                         {[1,2,3,4].map(i => (
                           <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, backgroundColor:
-                            password.length >= i * 3 ? (password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444") : "#e2e8f0" }} />
+                            password.length >= i * 3
+                              ? (password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444")
+                              : "#e2e8f0" }} />
                         ))}
                       </div>
                       <p style={{ fontSize: 11, color: password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444" }}>
@@ -120,7 +133,8 @@ export default function ResetPasswordPage() {
                 </div>
 
                 {error && (
-                  <div className="flex items-start gap-2 rounded-xl px-4 py-3" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
+                  <div className="flex items-start gap-2 rounded-xl px-4 py-3"
+                    style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
                     <span style={{ color: "#ef4444", flexShrink: 0 }}>⚠</span>
                     <p style={{ color: "#dc2626", fontSize: 14 }}>{error}</p>
                   </div>
