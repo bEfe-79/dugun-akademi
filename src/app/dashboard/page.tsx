@@ -49,6 +49,7 @@ export default function DashboardPage() {
         supabase.from("announcements")
           .select("*")
           .eq("is_active", true)
+          .neq("type", "admin_message")
           .or(`target_user_id.is.null,target_user_id.eq.${userId}`)
           .order("priority", { ascending: false })
           .order("created_at", { ascending: false })
