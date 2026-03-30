@@ -339,6 +339,7 @@ export default function AdminClient({
 }
 
 // ── MESAJ PANELİ ─────────────────────────────────────────────────────────────
+
 function MessagesPanel({ profiles }: { profiles: Profile[] }) {
   const [targetType, setTargetType]     = useState<"all" | "single">("all");
   const [targetUserId, setTargetUserId] = useState("");
@@ -356,7 +357,7 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
     setLoadingHistory(true);
     const { data } = await supabase
       .from("announcements")
-      .select("*")
+      .select("*, profiles(full_name)")
       .eq("type", "admin_message")
       .order("created_at", { ascending: false })
       .limit(20);
@@ -373,11 +374,12 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
     setSending(true); setMsg(null);
 
     const { error } = await supabase.from("announcements").insert({
-      title:     title.trim(),
-      body:      body.trim() || null,
-      type:      "admin_message",
-      is_active: true,
-      priority:  0,
+      title:          title.trim(),
+      body:           body.trim() || null,
+      type:           "admin_message",
+      is_active:      true,
+      priority:       0,
+      target_user_id: targetType === "single" ? targetUserId : null,
     });
 
     if (error) {
@@ -412,7 +414,6 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
       <div className="card space-y-4" style={{ border: "1px solid #b2eded", backgroundColor: "#f0fffe" }}>
         <h3 style={{ fontFamily: "'Chalet', sans-serif", fontWeight: 700, color: "#1e293b", fontSize: 17 }}>Yeni Mesaj Gönder</h3>
         <form onSubmit={handleSend} className="space-y-4">
-
           <div>
             <label style={lbl}>Alıcı</label>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -449,13 +450,6 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
             <textarea style={{ ...inp, resize: "none" } as React.CSSProperties} rows={3} placeholder="Mesaj detayı…" value={body} onChange={e => setBody(e.target.value)} />
           </div>
 
-          <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 14px", display: "flex", gap: 8 }}>
-            <span style={{ flexShrink: 0 }}>ℹ️</span>
-            <p style={{ fontSize: 12, color: "#92400e", lineHeight: 1.5 }}>
-              Mesajlar şu an dashboard duyurular bölümünde görünüyor. Yakında ayrı bir mesajlaşma arayüzüne taşınacak.
-            </p>
-          </div>
-
           <button type="submit" disabled={sending}
             style={{ padding: "10px 24px", borderRadius: 10, border: "none", backgroundColor: "#00abaa", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             {sending ? "Gönderiliyor…" : "Mesaj Gönder →"}
@@ -478,7 +472,12 @@ function MessagesPanel({ profiles }: { profiles: Profile[] }) {
             {sentMessages.map(m => (
               <div key={m.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, color: "#1e293b", fontSize: 14, marginBottom: 3 }}>{m.title}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                    <p style={{ fontWeight: 600, color: "#1e293b", fontSize: 14 }}>{m.title}</p>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, backgroundColor: m.target_user_id ? "#fce7f0" : "#e0f7f7", color: m.target_user_id ? "#db0962" : "#00abaa", border: `1px solid ${m.target_user_id ? "#f0b2cc" : "#b2eded"}` }}>
+                      {m.target_user_id ? `👤 ${m.profiles?.full_name ?? "Belirli kişi"}` : "👥 Tüm personel"}
+                    </span>
+                  </div>
                   {m.body && <p style={{ color: "#64748b", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.body}</p>}
                   <p style={{ color: "#94a3b8", fontSize: 11, marginTop: 4 }}>
                     {new Date(m.created_at).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
