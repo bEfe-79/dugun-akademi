@@ -3,6 +3,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function translateError(msg: string): string {
+  if (msg.includes("New password should be different")) return "Yeni şifre eski şifrenizle aynı olamaz.";
+  if (msg.includes("Password should be at least")) return "Şifre en az 8 karakter olmalıdır.";
+  if (msg.includes("Auth session missing")) return "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.";
+  if (msg.includes("Network")) return "Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.";
+  return "Bir hata oluştu. Lütfen tekrar deneyin.";
+}
+
 export default function SetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -29,7 +37,11 @@ export default function SetPasswordPage() {
     setLoading(true);
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) { setError("Şifre güncellenemedi: " + updateError.message); setLoading(false); return; }
+    if (updateError) {
+      setError(translateError(updateError.message));
+      setLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user?.id) {
       await supabase.from("profiles").update({ password_changed: true }).eq("id", session.user.id);
@@ -54,8 +66,8 @@ export default function SetPasswordPage() {
 
         <div className="card shadow-sm">
           <div style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "#e0f7f7", border: "2px solid #00abaa", display: "flex", alignItems: "center", justifyContent: "center", color: "#00abaa", fontWeight: 700, fontSize: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: "#e0f7f7", border: "2px solid #00abaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
                 🔐
               </div>
               <div>
@@ -81,13 +93,14 @@ export default function SetPasswordPage() {
                 placeholder="En az 8 karakter"
                 value={password} onChange={e => setPassword(e.target.value)}
                 required minLength={8} autoComplete="new-password" />
-              {/* Güç göstergesi */}
               {password.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
                     {[1,2,3,4].map(i => (
                       <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, backgroundColor:
-                        password.length >= i * 3 ? (password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444") : "#e2e8f0" }} />
+                        password.length >= i * 3
+                          ? (password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444")
+                          : "#e2e8f0" }} />
                     ))}
                   </div>
                   <p style={{ fontSize: 11, color: password.length >= 12 ? "#10b981" : password.length >= 8 ? "#f59e0b" : "#ef4444" }}>
@@ -113,7 +126,8 @@ export default function SetPasswordPage() {
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 rounded-xl px-4 py-3" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
+              <div className="flex items-start gap-2 rounded-xl px-4 py-3"
+                style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
                 <span style={{ color: "#ef4444", flexShrink: 0 }}>⚠</span>
                 <p style={{ color: "#dc2626", fontSize: 14 }}>{error}</p>
               </div>
