@@ -11,7 +11,6 @@ const NAV = [
   { href: "/school/trainings", label: "Satış Okulu" },
   { href: "/logs",             label: "Satış Günlüğü" },
   { href: "/library",          label: "Satış Kütüphanesi" },
-  { href: "/account",          label: "Hesabım" },
 ];
 const ADMIN_NAV = [{ href: "/admin", label: "Admin Paneli" }];
 
@@ -37,12 +36,13 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
   }, [profile?.id, pathname]);
 
   function isActive(href: string) {
-    if (href === "/library")        return pathname.startsWith("/library");
+    if (href === "/library")          return pathname.startsWith("/library");
     if (href === "/school/trainings") return pathname.startsWith("/school");
-    if (href === "/admin")          return pathname.startsWith("/admin");
-    if (href === "/account")        return pathname.startsWith("/account");
+    if (href === "/admin")            return pathname.startsWith("/admin");
     return pathname === href;
   }
+
+  const isAccountActive = pathname.startsWith("/account");
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col"
@@ -69,20 +69,12 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         <p style={{ padding: "0 12px", marginBottom: 8, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Menü</p>
         {NAV.map(item => {
           const active = isActive(item.href);
-          const isAccount = item.href === "/account";
           return (
             <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
               <div style={{ display: "flex", alignItems: "center", borderRadius: 12, overflow: "hidden", backgroundColor: active ? "#fef2f5" : "transparent", transition: "background .15s" }}>
-                <div style={{ width: 4, alignSelf: "stretch", flexShrink: 0, backgroundColor: active ? "#db0962" : "transparent", borderRadius: "0 3px 3px 0", minHeight: 40, transition: "background .15s" }} />
-                <div style={{ flex: 1, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#db0962" : "#475569" }}>
-                    {item.label}
-                  </span>
-                  {isAccount && unreadCount > 0 && (
-                    <div style={{ width: 18, height: 18, borderRadius: "50%", backgroundColor: "#db0962", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: "#fff" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
-                    </div>
-                  )}
+                <div style={{ width: 4, alignSelf: "stretch", flexShrink: 0, backgroundColor: active ? "#db0962" : "transparent", borderRadius: "0 3px 3px 0", minHeight: 40 }} />
+                <div style={{ flex: 1, padding: "10px 12px", fontSize: 14, fontWeight: active ? 700 : 500, color: active ? "#db0962" : "#475569" }}>
+                  {item.label}
                 </div>
               </div>
             </Link>
@@ -109,22 +101,42 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         )}
       </nav>
 
-      {/* User */}
-      <div style={{ padding: "14px 16px", borderTop: "0.5px solid #f1f5f9", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#00abaa,#007a7a)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,171,170,.3)" }}>
-          {profile?.avatar_url
-            ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : (profile?.full_name?.[0] ?? "?")}
+      {/* User — tıklanabilir, /account'a gider */}
+      <Link href="/account" style={{ textDecoration: "none" }}>
+        <div style={{
+          padding: "14px 16px",
+          borderTop: "0.5px solid #f1f5f9",
+          display: "flex", alignItems: "center", gap: 10,
+          backgroundColor: isAccountActive ? "#fef2f5" : "transparent",
+          transition: "background .15s",
+          cursor: "pointer",
+        }}
+          onMouseEnter={e => { if (!isAccountActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#f8fafc"; }}
+          onMouseLeave={e => { if (!isAccountActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#00abaa,#007a7a)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,171,170,.3)" }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : (profile?.full_name?.[0] ?? "?")}
+            </div>
+            {/* Okunmamış mesaj badge */}
+            {unreadCount > 0 && (
+              <div style={{ position: "absolute", top: -3, right: -3, width: 16, height: 16, borderRadius: "50%", backgroundColor: "#db0962", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 8, fontWeight: 800, color: "#fff" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ color: isAccountActive ? "#db0962" : "#1e293b", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {profile?.full_name ?? "—"}
+            </p>
+            <p style={{ color: "#94a3b8", fontSize: 11 }}>
+              {ROLE_LABELS[profile?.role ?? "staff"] ?? profile?.role}
+            </p>
+          </div>
+          <span style={{ fontSize: 12, color: "#94a3b8", flexShrink: 0 }}>›</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: "#1e293b", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {profile?.full_name ?? "—"}
-          </p>
-          <p style={{ color: "#94a3b8", fontSize: 11 }}>
-            {ROLE_LABELS[profile?.role ?? "staff"] ?? profile?.role}
-          </p>
-        </div>
-      </div>
+      </Link>
     </aside>
   );
 }
