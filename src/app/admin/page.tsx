@@ -9,8 +9,13 @@ import type { Profile, DailyLog } from "@/types";
 
 type Tab = "logs" | "management" | "content" | "school";
 
+async function getToken() {
+  const { data: { session } } = await createClient().auth.getSession();
+  return session?.access_token ?? "";
+}
+
 export default function AdminPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<(Profile & { last_login?: string; email?: string })[]>([]);
   const [logs, setLogs]         = useState<(DailyLog & { profiles?: { full_name: string } })[]>([]);
   const [isAdmin, setIsAdmin]   = useState<boolean | null>(null);
   const [tab, setTab]           = useState<Tab>("logs");
@@ -19,15 +24,27 @@ export default function AdminPage() {
     const supabase = createClient();
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user?.id) { setIsAdmin(false); return; }
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+      const { data: profile } = await supabase
+        .from("profiles").select("role").eq("id", session.user.id).maybeSingle();
       if (profile?.role !== "admin") { setIsAdmin(false); return; }
       setIsAdmin(true);
+
+      const token = session.access_token;
+
       const [profilesRes, logsRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, first_name, last_name, role, monthly_target, current_sales, last_login, phone, team_name, team_logo_url, avatar_url").order("full_name"),
-        supabase.from("daily_logs").select("*, profiles(full_name)").order("log_date", { ascending: false }).order("log_time", { ascending: false }).limit(1000),
+        // UserManagement ile aynı endpoint — email + last_login dahil tam veri
+        fetch("/api/admin/users", { headers: { authorization: `Bearer ${token}` } })
+          .then(r => r.ok ? r.json() : []),
+        supabase.from("daily_logs")
+          .select("*, profiles(full_name)")
+          .order("log_date", { ascending: false })
+          .order("log_time", { ascending: false })
+          .limit(1000)
+          .then(r => r.data ?? []),
       ]);
-      setProfiles(profilesRes.data ?? []);
-      setLogs(logsRes.data ?? []);
+
+      setProfiles(profilesRes);
+      setLogs(logsRes);
     });
   }, []);
 
@@ -67,7 +84,6 @@ export default function AdminPage() {
         </p>
       </div>
 
-      {/* Tab bar — mobilde tam genişlik */}
       <div style={{ display: "flex", backgroundColor: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 12, padding: 4, gap: 4 }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
